@@ -118,7 +118,7 @@ resource "aws_ecs_service" "ecs_service" {
   }
 
   deployment_controller {
-    type = "ECS"
+    type = "CODE_DEPLOY"
   }
 
   health_check_grace_period_seconds = 60

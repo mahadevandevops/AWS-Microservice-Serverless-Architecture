@@ -10,72 +10,14 @@ resource "aws_iam_role" "codepipeline_role1" {
         Principal = {
           Service = ["codepipeline.amazonaws.com",
             "codedeploy.amazonaws.com",
-          "codebuild.amazonaws.com"]
+            "codebuild.amazonaws.com"
+          ]
         }
       },
     ]
   })
 }
 
-# resource "aws_iam_policy" "codepipeline_policy1" {
-#   name = "codepipeline-policy1"
-
-#   policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "codecommit:GitPull"
-#         ],
-#         Resource = "*"
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "codebuild:BatchGetBuilds",
-#           "codebuild:StartBuild",
-#           "codebuild:BatchGetBuildBatches",
-#           "codebuild:BatchStartBuilds",
-#           "codebuild:BatchGetProjects"
-#         ],
-#         Resource = "*"
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "ecs:DescribeServices",
-#           "ecs:UpdateService",
-#           "ecs:DescribeTaskDefinition",
-#           "ecs:DescribeTasks",
-#           "ecs:ListTasks",
-#           "ecs:RegisterTaskDefinition"
-#         ],
-#         Resource = "*"
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "s3:GetObject",
-#           "s3:PutObject"
-#         ],
-#         Resource = "arn:aws:s3:::${aws_s3_bucket.artifact_bucket.bucket}/*"
-#       },
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "iam:PassRole"
-#         ],
-#         Resource = "*"
-#       }
-#     ]
-#   })
-# }
-
-# resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
-#   role       = aws_iam_role.codepipeline_role1.name
-#   policy_arn = aws_iam_policy.codepipeline_policy1.arn
-# }
 
 resource "aws_iam_policy" "codepipeline_policy1" {
   name = "codepipeline-policy1"
@@ -111,6 +53,31 @@ resource "aws_iam_policy" "codepipeline_policy1" {
       },
       {
         Effect = "Allow",
+        Action = [
+          "codedeploy:GetApplication",
+          "codedeploy:GetDeployment",
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:GetDeploymentGroup",
+          "codedeploy:GetApplicationRevision",
+          "codedeploy:ListApplications",
+          "codedeploy:ListDeploymentGroups",
+          "codedeploy:ListDeployments",
+          "codedeploy:ListDeploymentInstances",
+          "codedeploy:CreateDeployment",
+          "codedeploy:UpdateDeploymentGroup",
+          "codedeploy:RegisterApplicationRevision"
+        ],
+        Resource = "*"
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : [
+        "elasticloadbalancing:*"
+        ],
+        "Resource" : "*"
+      },
+      {
+        Effect = "Allow",
         Resource = [
           "*",
         ],
@@ -128,7 +95,10 @@ resource "aws_iam_policy" "codepipeline_policy1" {
           "ecs:DescribeTaskDefinition",
           "ecs:DescribeTasks",
           "ecs:ListTasks",
-          "ecs:RegisterTaskDefinition"
+          "ecs:RegisterTaskDefinition",
+          "ecs:CreateTaskSet",
+          "ecs:UpdateServicePrimaryTaskSet",
+           "ecs:DeleteTaskSet"
         ],
         Resource = "*"
       },
@@ -217,35 +187,57 @@ resource "aws_codepipeline" "my_pipeline" {
       }
     }
   }
-   stage {
-    name = "Approval"
+  #  stage {
+  #   name = "Approval"
 
-    action {
-      version  = "1"
-      name     = "ManualApproval"
-      category = "Approval"
-      owner    = "AWS"
-      provider = "Manual"
+  #   action {
+  #     version  = "1"
+  #     name     = "ManualApproval"
+  #     category = "Approval"
+  #     owner    = "AWS"
+  #     provider = "Manual"
 
-      configuration = {
-        CustomData = "Please approve the deployment to ECS."
-      }
-    }
-  }
+  #     configuration = {
+  #       CustomData = "Please approve the deployment to ECS."
+  #     }
+  #   }
+  # }
+  #Straight Forward Deployment
+  # stage {
+  #   name = "Deploy"
+
+  #   action {
+  #     version         = "1"
+  #     name            = "DeployToECS"
+  #     category        = "Deploy"
+  #     owner           = "AWS"
+  #     provider        = "ECS"
+  #     input_artifacts = ["build_output"]
+  #     configuration = {
+  #     ClusterName      = aws_ecs_cluster.ecs_cluster.name
+  #     ServiceName      = aws_ecs_service.ecs_service.name
+  #     #ImageDefinitions = "imagedefinitions.json"
+  #     }
+  #   }
+  # }
+  #Straight Blue Green Deployment
   stage {
     name = "Deploy"
 
     action {
       version         = "1"
-      name            = "DeployToECS"
+      name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "ECS"
+      provider        = "CodeDeployToECS"
       input_artifacts = ["build_output"]
       configuration = {
-      ClusterName      = aws_ecs_cluster.ecs_cluster.name
-      ServiceName      = aws_ecs_service.ecs_service.name
-      #ImageDefinitions = "imagedefinitions.json"
+        ApplicationName                = aws_codedeploy_app.ecs_app.name
+        DeploymentGroupName            = aws_codedeploy_deployment_group.ecs_deployment_group.deployment_group_name
+        TaskDefinitionTemplateArtifact = "build_output"
+        TaskDefinitionTemplatePath     = "taskdef.json"
+        AppSpecTemplateArtifact        = "build_output"
+        AppSpecTemplatePath            = "appspec.yaml"
       }
     }
   }

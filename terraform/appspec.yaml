@@ -1,0 +1,42 @@
+{
+  "version": 0.0,
+  "Resources": [
+    {
+      "TargetService": {
+        "Type": "AWS::ECS::Service",
+        "Properties": {
+          "TaskDefinition": "arn:aws:ecs:us-east-1:185212935946:task-definition/my-ecs-task:10",
+          "LoadBalancerInfo": {
+            "ContainerName": "my-container",
+            "ContainerPort": 80
+          },
+          "PlatformVersion": "LATEST",
+          "NetworkConfiguration": {
+            "AwsvpcConfiguration": {
+              "Subnets": [
+                "subnet-01977469405da76ba",
+                "subnet-0fda183d6f5216bff"
+              ],
+              "SecurityGroups": [
+                "sg-00a0038d750a1198f"
+              ],
+              "AssignPublicIp": "ENABLED"
+            }
+          },
+          "CapacityProviderStrategy": [
+            {
+              "Base": 1,
+              "CapacityProvider": "FARGATE_SPOT",
+              "Weight": 2
+            },
+            {
+              "Base": 0,
+              "CapacityProvider": "FARGATE",
+              "Weight": 1
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
